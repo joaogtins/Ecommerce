@@ -89,3 +89,11 @@
 
 ### Dependências adicionadas
 - **lombok**: `@Getter`, `@Setter`, `@NoArgsConstructor`, `@AllArgsConstructor`, `@Builder` em todas as entidades (reduz boilerplate)
+
+### Passo 1.13 — Migration Flyway V1
+- Criado `V1__create_tables.sql` com todas as tabelas, FKs, índices e constraints:
+  `products`, `product_variants`, `stock_movements`, `customers`, `addresses`,
+  `delivery_zones`, `orders`, `order_items`, `payments`, `order_status_history`
+- Nomenclatura: snake_case, plural, índices em colunas mais consultadas
+- Relacionamentos com ON DELETE CASCADE/SET NULL adequados
+- Só executado no perfil padrão (PostgreSQL). Perfil `dev` usa Hibernate ddl-auto.
