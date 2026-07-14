@@ -97,3 +97,38 @@
 - Nomenclatura: snake_case, plural, índices em colunas mais consultadas
 - Relacionamentos com ON DELETE CASCADE/SET NULL adequados
 - Só executado no perfil padrão (PostgreSQL). Perfil `dev` usa Hibernate ddl-auto.
+
+## Fase 2 — Estoque e Produtos (CRUD) + Tratamento de Erro Global
+
+### Passo 2.1 — Repositories
+- `ProductRepository`: `findByActiveTrue()`, `findByCategory()`
+- `ProductVariantRepository`: `findBySku()`, `existsBySku()`, `findByIdWithLock()` (PESSIMISTIC_WRITE para Fase 4)
+- `StockMovementRepository`: `findByVariantIdOrderByCreatedAtDesc()`, `calculateCurrentStock()` via JPQL
+
+### Passo 2.2 — DTOs de Request
+- `CreateProductRequest`: name/category @NotBlank, pricingType @NotNull, variants @NotEmpty
+- `CreateVariantRequest`: weightInGrams/price @Positive
+- `StockMovementRequest`: variantId @NotNull, type @NotNull, quantity @Positive
+
+### Passo 2.3 — DTOs de Response
+- `ProductResponse`: id, name, category, pricingType, variants aninhados
+- `VariantResponse`: id, size, weight, price, sku, stockQuantity
+- `UpdateProductRequest`: todos campos opcionais para PATCH
+
+### Passo 2.4 — Mappers
+- `ProductMapper`: conversão Entity ↔ DTO com tratamento de null-safe em listas
+- `PricingType.BY_GRAM` → `pricePerGram` aplicado; senão, nulo
+
+### Passo 2.5 — Services
+- `ProductService`: CRUD com soft delete, geração automática de SKU (UUID), criação de variantes em cascata
+- `StockService`: `registerMovement()` valida saldo antes de OUT, `calculateCurrentStock()` via soma de movimentos
+- Exceções customizadas: `ResourceNotFoundException`, `InsufficientStockException`, `InvalidStatusTransitionException`, `BusinessException`
+
+### Passo 2.6 — GlobalExceptionHandler
+- 8 handlers: 404, 400, 409 (optimistic/pessimistic lock + estoque), 422 (transição inválida + negócio), 500 (genérico com log)
+- `ErrorResponse` record com code, message e timestamp
+
+### Passo 2.7 — Controllers
+- `ProductController`: `GET /api/products`, `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}`
+- `StockController`: `POST /{productId}/stock/movements`, `GET /{productId}/stock`
+- Anotações Swagger (@Tag, @Operation, @ApiResponse) em todos os endpoints
