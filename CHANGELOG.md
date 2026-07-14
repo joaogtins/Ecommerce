@@ -52,3 +52,6 @@
 | `jackson.serialization.write-dates-as-timestamps` quebra bind | Removido |
 | H2 em escopo `test` não disponível em runtime | Alterado para `runtime` |
 | Docker não rodando | Ativado Docker Desktop |
+
+### Notas de desenvolvimento
+- **SecurityDevConfig**: Configuração temporária que libera todos os endpoints no perfil `dev`. Remover quando a Fase 7 (Autenticação JWT) for implementada. O perfil padrão (sem `dev`) ainda exibe tela de login do Spring Security — se quiser testar sem auth, rode com `-Dspring-boot.run.profiles=dev`.
