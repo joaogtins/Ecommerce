@@ -101,34 +101,61 @@
 ## Fase 2 — Estoque e Produtos (CRUD) + Tratamento de Erro Global
 
 ### Passo 2.1 — Repositories
-- `ProductRepository`: `findByActiveTrue()`, `findByCategory()`
-- `ProductVariantRepository`: `findBySku()`, `existsBySku()`, `findByIdWithLock()` (PESSIMISTIC_WRITE para Fase 4)
-- `StockMovementRepository`: `findByVariantIdOrderByCreatedAtDesc()`, `calculateCurrentStock()` via JPQL
+- **`ProductRepository`** (`repository/ProductRepository.java`)
+  - Função: interface de acesso ao banco para produtos. `findByActiveTrue()` filtra apenas ativos (soft delete), `findByCategory()` para filtro no catálogo.
+- **`ProductVariantRepository`** (`repository/ProductVariantRepository.java`)
+  - Função: acesso a variantes de produto. `findBySku()` garante unicidade de SKU, `existsBySku()` evita duplicatas.
+  - `findByIdWithLock()` usa `@Lock(PESSIMISTIC_WRITE)` — emite `SELECT ... FOR UPDATE` no PostgreSQL. **Essencial para Fase 4**: impede que duas threads reservem a mesma peça única simultaneamente.
+- **`StockMovementRepository`** (`repository/StockMovementRepository.java`)
+  - Função: persistência de todas as movimentações de estoque.
+  - `calculateCurrentStock()` é uma **JPQL com CASE** que soma entradas (IN, RELEASE) e subtrai saídas (OUT, RESERVE). **Decisão crítica:** o saldo nunca vem de um campo fixo, é sempre calculado do histórico — isso garante auditabilidade total de como cada unidade entrou/saiu.
 
 ### Passo 2.2 — DTOs de Request
-- `CreateProductRequest`: name/category @NotBlank, pricingType @NotNull, variants @NotEmpty
-- `CreateVariantRequest`: weightInGrams/price @Positive
-- `StockMovementRequest`: variantId @NotNull, type @NotNull, quantity @Positive
+- **`CreateProductRequest`** (`dto/request/CreateProductRequest.java`)
+  - Função: define o contrato da API para criar um produto. Usa Java `record` para imutabilidade e Bean Validation nos campos obrigatórios.
+  - `variants @NotEmpty` — obriga enviar ao menos uma variante na criação (produto sem variante não faz sentido).
+- **`CreateVariantRequest`** (`dto/request/CreateVariantRequest.java`)
+  - Função: dados de cada variante dentro do produto. `weightInGrams` e `price` com `@Positive` impedem valores negativos ou zero.
+- **`StockMovementRequest`** (`dto/request/StockMovementRequest.java`)
+  - Função: entrada/saída de estoque. `variantId` e `type` são obrigatórios para saber onde e o que aconteceu.
 
 ### Passo 2.3 — DTOs de Response
-- `ProductResponse`: id, name, category, pricingType, variants aninhados
-- `VariantResponse`: id, size, weight, price, sku, stockQuantity
-- `UpdateProductRequest`: todos campos opcionais para PATCH
+- **`ProductResponse`** + **`VariantResponse`** (`dto/response/`)
+  - Função: formato de saída da API. **Nunca expõe a entidade JPA diretamente** — desacopla o contrato público da estrutura interna do banco.
+  - `VariantResponse` inclui `stockQuantity` (calculado em tempo real), mas **não expõe** campos internos como `version` (lock) ou `active`.
+- **`UpdateProductRequest`** (`dto/request/UpdateProductRequest.java`)
+  - Função: atualização parcial (PATCH). Todos os campos são opcionais — se o cliente enviar só o `name`, apenas o nome é alterado.
 
 ### Passo 2.4 — Mappers
-- `ProductMapper`: conversão Entity ↔ DTO com tratamento de null-safe em listas
-- `PricingType.BY_GRAM` → `pricePerGram` aplicado; senão, nulo
+- **`ProductMapper`** (`mapper/ProductMapper.java`)
+  - Função: centraliza a conversão entre entidades JPA e DTOs. `toResponse()` com null-safe em listas de variantes.
+  - **Decisão:** `pricePerGram` só é preenchido quando `pricingType == BY_GRAM`. Se for `FIXED`, fica nulo — evita campo irrelevante na resposta.
 
 ### Passo 2.5 — Services
-- `ProductService`: CRUD com soft delete, geração automática de SKU (UUID), criação de variantes em cascata
-- `StockService`: `registerMovement()` valida saldo antes de OUT, `calculateCurrentStock()` via soma de movimentos
-- Exceções customizadas: `ResourceNotFoundException`, `InsufficientStockException`, `InvalidStatusTransitionException`, `BusinessException`
+- **`ProductService`** (`service/ProductService.java`)
+  - Função: regras de negócio do produto. `create()` gera SKU automático (UUID de 8 chars) se não informado. `delete()` faz soft delete (active=false) em vez de remover — preserva histórico de pedidos.
+  - **Decisão:** a criação de variantes é em cascata (Product gerencia o ciclo de vida das variantes), mas a validação de unicidade de SKU fica no banco (unique index), não no service.
+- **`StockService`** (`service/StockService.java`)
+  - Função: centro de controle do estoque. `registerMovement()` valida se há saldo suficiente ANTES de registrar uma saída. `calculateCurrentStock()` soma o histórico.
+  - **Decisão:** usa `StockMovementType` nos cálculos — se no futuro adicionarmos um novo tipo, basta ajustar o CASE.
+- **Exceções customizadas** (`exception/`)
+  - `ResourceNotFoundException` (404): produto/variante/pedido não encontrado
+  - `InsufficientStockException` (409): tentativa de vender mais do que o estoque permite
+  - `InvalidStatusTransitionException` (422): pulo de etapas no fluxo de pedido (preparada para Fase 6)
+  - `BusinessException` (422): classe base para erros de negócio genéricos
 
 ### Passo 2.6 — GlobalExceptionHandler
-- 8 handlers: 404, 400, 409 (optimistic/pessimistic lock + estoque), 422 (transição inválida + negócio), 500 (genérico com log)
-- `ErrorResponse` record com code, message e timestamp
+- **`GlobalExceptionHandler`** (`exception/GlobalExceptionHandler.java`)
+  - Função: **único ponto** que traduz exceções Java em respostas HTTP com formato consistente. Sem ele, o Spring retornaria stack traces ou HTML padrão do Tomcat.
+  - Handlers implementados: `ResourceNotFoundException` → 404, `MethodArgumentNotValidException` → 400 (com campo:mensagem), `OptimisticLockException` → 409, `PessimisticLockingFailureException` → 409, `InsufficientStockException` → 409, `InvalidStatusTransitionException` → 422, `BusinessException` → 422, `Exception` genérica → 500 (com log do erro).
+- **`ErrorResponse`** (`exception/ErrorResponse.java`)
+  - Função: formato padronizado de erro. Todo erro retorna `{"code": "NOT_FOUND", "message": "...", "timestamp": "..."}` — o frontend sempre sabe como interpretar.
 
 ### Passo 2.7 — Controllers
-- `ProductController`: `GET /api/products`, `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}`
-- `StockController`: `POST /{productId}/stock/movements`, `GET /{productId}/stock`
-- Anotações Swagger (@Tag, @Operation, @ApiResponse) em todos os endpoints
+- **`ProductController`** (`controller/ProductController.java`)
+  - Função: endpoints REST para gestão de produtos. `POST /api/products` cria com variantes, `DELETE /api/products/{id}` desativa (soft delete).
+  - **Decisão:** usa `@Valid` para ativar Bean Validation e `@ResponseStatus(HttpStatus.NO_CONTENT)` no DELETE para retornar 204 sem corpo.
+- **`StockController`** (`controller/StockController.java`)
+  - Função: movimentação de estoque por produto. `POST /{productId}/stock/movements` registra entrada/saída, `GET /{productId}/stock` retorna saldo.
+  - `@Tag` + `@Operation` + `@ApiResponse` documentam cada endpoint no Swagger.
+- **Anotações Swagger adicionadas** para que o Swagger UI (em `/swagger-ui`) exiba descrições legíveis e códigos de resposta esperados.

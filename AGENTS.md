@@ -15,7 +15,11 @@
 ## Changelog
 
 - Atualize `CHANGELOG.md` **a cada commit**, não apenas no fim da fase.
-- Inclua: arquivos criados/modificados, desvios do plano original, e motivos técnicos por trás de cada decisão.
+- Para cada arquivo/componente criado, explique:
+  - **O que foi criado** — nome e localização
+  - **Qual a função** — pra que ele serve no sistema
+  - **Por que foi implementado assim** — decisão técnica, trade-off, motivo da abordagem
+- Se houver desvio do roadmap original, documente a causa e a solução.
 
 ## Segurança
 
