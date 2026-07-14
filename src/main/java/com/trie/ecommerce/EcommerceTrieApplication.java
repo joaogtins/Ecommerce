@@ -1,13 +1,13 @@
-package com.prataelua.ecommerce;
+package com.trie.ecommerce;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class EcommercePrataLuaApplication {
+public class EcommerceTrieApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(EcommercePrataLuaApplication.class, args);
+		SpringApplication.run(EcommerceTrieApplication.class, args);
 	}
 
 }

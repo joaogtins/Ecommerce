@@ -1,8 +1,8 @@
 spring:
   application:
-    name: EcommercePrataLua
+    name: EcommerceTrie
   datasource:
-    url: jdbc:postgresql://localhost:5432/prata_e_lua
+    url: jdbc:postgresql://localhost:5432/trie_db
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
     hikari:

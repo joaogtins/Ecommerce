@@ -8,11 +8,11 @@
 		<version>4.1.0</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.prataelua</groupId>
+	<groupId>com.trie</groupId>
 	<artifactId>ecommerce</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>EcommercePrataLua</name>
-	<description>E-commerce de Joias de Prata</description>
+	<name>EcommerceTrie</name>
+	<description>E-commerce Triê - Joias de Prata</description>
 	<url/>
 	<licenses>
 		<license/>

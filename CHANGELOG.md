@@ -1,4 +1,4 @@
-# Changelog — E-commerce Prata & Lua
+# Changelog — E-commerce Triê
 
 ## Fase 0 — Setup do Projeto
 
@@ -6,6 +6,7 @@
 - Gerado pelo Spring Initializr via `curl`
 - **Spring Boot 4.1.0** (não 3.4.1 — versão indisponível no Initializr)
 - **Java 21**, Maven, PostgreSQL, JPA, Security, Validation, Flyway, Actuator
+- **Pacote base:** `com.trie.ecommerce` (anteriormente `com.prataelua`)
 - Starter `spring-boot-starter-webmvc` (SB 4.x usa `webmvc` no lugar de `web`)
 
 ### Passo 0.2 — Dependências manuais no pom.xml

@@ -1,10 +1,10 @@
-package com.prataelua.ecommerce;
+package com.trie.ecommerce;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class EcommercePrataLuaApplicationTests {
+class EcommerceTrieApplicationTests {
 
 	@Test
 	void contextLoads() {

@@ -1,4 +1,4 @@
-# Regras de Trabalho — Prata & Lua E-commerce
+# Regras de Trabalho — Triê E-commerce
 
 ## Commits
 

@@ -1,9 +1,9 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: prata_e_lua_db
+    container_name: trie_db
     environment:
-      POSTGRES_DB: prata_e_lua
+      POSTGRES_DB: trie_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:

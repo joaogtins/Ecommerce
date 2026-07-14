@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <springProperty name="APP_NAME" source="spring.application.name" defaultValue="ecommerce-prata-lua"/>
+    <springProperty name="APP_NAME" source="spring.application.name" defaultValue="ecommerce-trie"/>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
@@ -31,6 +31,6 @@
         </root>
     </springProfile>
 
-    <logger name="com.prataelua.ecommerce" level="DEBUG"/>
+    <logger name="com.trie.ecommerce" level="DEBUG"/>
     <logger name="org.hibernate.SQL" level="DEBUG"/>
 </configuration>
