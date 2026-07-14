@@ -3,64 +3,66 @@
 ## Fase 0 — Setup do Projeto
 
 ### Passo 0.1 — Esqueleto do projeto
-- Gerado pelo Spring Initializr via `curl`
-- **Spring Boot 4.1.0** (não 3.4.1 — versão indisponível no Initializr)
-- **Java 21**, Maven, PostgreSQL, JPA, Security, Validation, Flyway, Actuator
-- **Pacote base:** `com.trie.ecommerce` (anteriormente `com.prataelua`)
-- Starter `spring-boot-starter-webmvc` (SB 4.x usa `webmvc` no lugar de `web`)
+- **`pom.xml`** + estrutura Maven gerada pelo Spring Initializr via `curl`
+- **Função:** base do projeto Spring Boot com todas as configurações iniciais.
+- **Decisões:**
+  - **Spring Boot 4.1.0** (não 3.4.1 como planejado — versão não existia no Initializr)
+  - **`spring-boot-starter-webmvc`** em vez de `spring-boot-starter-web` — SB 4.x separou MVC de WebFlux, e o Initializr gera `webmvc` por padrão
+  - **Java alvo 21** (mesmo com `java.version=17` inicialmente, depois atualizado)
+  - Dependências inclusas: JPA (Hibernate), PostgreSQL, Security, Validation, Flyway, Actuator
 
 ### Passo 0.2 — Dependências manuais no pom.xml
-- **springdoc-openapi 3.0.2** — Swagger UI (2.8.16 era incompatível com SB 4.x)
-- **sdk-java 3.3.0** — Mercado Pago SDK (versão real no Maven Central, não 2.1.24)
-- **jjwt 0.12.6** — Geração de tokens JWT (api + impl + jackson)
-- **shedlock 6.2.0** — Lock entre instâncias no @Scheduled
-- **logstash-logback-encoder 8.0** — Logs em JSON para produção
-- **h2** — Banco em memória para desenvolvimento (scope `runtime`)
-- **testcontainers 1.20.3** — PostgreSQL em container para testes
-- **spring-boot-starter-test** + **security-test**
-- O Initializr não gerou `spring-boot-starter-test` básico — adicionado manualmente
+- **springdoc-openapi 3.0.2** — Gera o Swagger UI automaticamente. **Decisão:** versão 2.8.16 foi testada e era incompatível com SB 4.x (`WebMvcProperties` removida do pacote antigo). 3.0.2 é a primeira versão compatível.
+- **sdk-java 3.3.0** — SDK oficial do Mercado Pago para criar cobranças (PIX/cartão) e processar webhooks. Versão real do Maven Central (não 2.1.24 como constava no roadmap original).
+- **jjwt 0.12.6** (3 jars: api + impl + jackson) — Geração e validação de tokens JWT para autenticação stateless (Fase 7). O `impl` e `jackson` são `runtime` porque só o `api` é necessário em tempo de compilação.
+- **shedlock 6.2.0** (2 jars: spring + jdbc-template) — Lock distribuído para tarefas agendadas. **Função:** garante que a expiração de reserva de estoque rode em apenas uma instância quando houver múltiplas réplicas (Fase 4).
+- **logstash-logback-encoder 8.0** — Serializador JSON para logs do Logback. **Função:** produz logs estruturados consumíveis por Datadog/ELK em produção, sem alterar o código da aplicação.
+- **h2** — Banco em memória. **Função:** perfil `dev` sem Docker. Scope `runtime` (não `test`) porque precisa estar disponível em execução, não só em testes.
+- **testcontainers 1.20.3** (2 jars) — PostgreSQL em container para testes de integração. **Função:** os testes rodam contra um PostgreSQL real, não um H2 mockado.
+- **spring-boot-starter-test** — Adicionado manualmente porque o Initializr do SB 4.x não o gerou (gera apenas os `-test` específicos como `webmvc-test`, `jpa-test`).
 
 ### Passo 0.3 — Docker Compose
-- PostgreSQL 16 Alpine com volume persistente e healthcheck
+- **`docker-compose.yml`** com PostgreSQL 16 Alpine, volume `pgdata` persistente e healthcheck com `pg_isready`
+- **Função:** ambiente isolado e reproduzível. O healthcheck impede que `docker compose up -d` retorne antes do banco estar pronto para conexões.
+- **Decisão:** Alpine Linux (~80MB em vez de ~400MB da imagem full PostgreSQL) para iniciar mais rápido.
 
 ### Passo 0.4 — application.yml
-- Convertido de `.properties` para `.yml` (hierarquia mais legível)
-- `ddl-auto: validate` — Flyway gerencia o schema, Hibernate só valida
-- `open-in-view: false` — desliga anti-pattern de sessão JPA aberta até a view
-- Jackson serialization → removido `write-dates-as-timestamps` (incompatível com `tools.jackson` do SB 4.x), substituído por `default-property-inclusion: non_null`
-- CORS configurado para localhost:3000 e localhost:5173
+- **Função:** configuração central da aplicação. Substitui o `application.properties` gerado pelo Initializr (formato `.yml` é hierárquico e mais legível).
+- **`ddl-auto: validate`** — Hibernate **nunca** cria/altera tabelas. Quem gerencia o schema é o Flyway. Se a entidade Java não bater com a tabela real, a aplicação nem inicia — evita erro silencioso em produção.
+- **`open-in-view: false`** — Desliga o anti-pattern que mantém a sessão JPA aberta até o fim da requisição. Força o desenvolvedor a declarar transações explicitamente, evitando `LazyInitializationException` em lugares inesperados.
+- **`jackson.default-property-inclusion: non_null`** — Remove campos nulos das respostas JSON. Substituiu `write-dates-as-timestamps` (incompatível com `tools.jackson` do SB 4.x).
+- **CORS** configurado com `app.cors.allowed-origins` — preparado para Fase 9, mas já documentado.
+- **`${VAR:default}`** em todos os segredos (JWT, Mercado Pago, CORS) — permite configurar sem expor valores reais no repositório.
 
 ### Passo 0.5 — Logback com JSON
-- Perfil `!prod`: logs em texto legível com timestamp, nível, classe
-- Perfil `prod`: logs em JSON estruturado (Datadog/ELK)
-- Loggers em DEBUG para `com.prataelua.ecommerce` e `org.hibernate.SQL`
+- **`logback-spring.xml`** com dois perfis:
+  - **`!prod`** (dev): formato texto com timestamp, nível, classe e mensagem — legível por humanos
+  - **`prod`**: JSON estruturado via `LoggingEventCompositeJsonEncoder` — indexável por ferramentas de observabilidade
+- **Função:** logs de DEBUG para `com.trie.ecommerce` (código da aplicação) e `org.hibernate.SQL` (queries executadas) — essencial para debugar JPA durante o desenvolvimento.
 
 ### Passo 0.6 — Subida do banco e validação
-- Docker Desktop ativado via `systemctl --user start docker-desktop`
-- `docker compose up -d` → PostgreSQL 16 rodando e saudável
-- Aplicação conectou ao PostgreSQL via HikariCP + Flyway
-- Criado perfil `application-dev.yml` como fallback:
-  - H2 em modo compatibilidade PostgreSQL
-  - Flyway desativado, `ddl-auto: update` para desenvolvimento sem Docker
-  - Console H2 em `/h2-console`
+- Docker Desktop ativado com `systemctl --user start docker-desktop` (estava instalado mas parado)
+- `docker compose up -d` baixou `postgres:16-alpine` (~113MB) e iniciou o container
+- Aplicação conectou ao PostgreSQL via HikariCP + Flyway com sucesso
+- **Criado `application-dev.yml`** como fallback para ambientes sem Docker:
+  - H2 em `MODE=PostgreSQL` para compatibilidade de SQL
+  - Flyway desativado, Hibernate com `ddl-auto: update` (cria as tabelas das entidades)
+  - Console H2 em `/h2-console` para consultar o banco pelo navegador
 
 ### Correções técnicas aplicadas durante a fase
-| Problema | Solução |
-|---|---|
-| SB 3.4.1 inexistente no Initializr | Usar SB 4.1.0 (gerado automaticamente) |
-| springdoc 2.x quebra com SB 4.x | springdoc 3.0.2 |
-| `jackson.serialization.write-dates-as-timestamps` quebra bind | Removido |
-| H2 em escopo `test` não disponível em runtime | Alterado para `runtime` |
-| Docker não rodando | Ativado Docker Desktop |
-
-### Notas de desenvolvimento
-- **SecurityDevConfig**: Configuração temporária que libera todos os endpoints no perfil `dev`. Remover quando a Fase 7 (Autenticação JWT) for implementada.
+| Problema | Causa | Solução |
+|---|---|---|
+| SB 3.4.1 não existe no Initializr | Roadmap escrito antes do SB 4.x ser lançado | Initializr gerou 4.1.0 automaticamente |
+| springdoc 2.x quebra com SB 4.x | Classe `WebMvcProperties` movida de pacote no SB 4 | springdoc 3.0.2 |
+| `jackson.serialization.write-dates-as-timestamps` quebra bind | Jackson migrou de `com.fasterxml` para `tools.jackson` no SB 4 | Removida; substituída por `default-property-inclusion: non_null` |
+| H2 não disponível em runtime | Scope `test` não coloca no classpath de execução | Alterado para `runtime` |
+| Docker não rodando | Docker Desktop parado, socket não existe | Ativado com `systemctl --user start docker-desktop` |
+| Tela de login do Spring Security aparecia | Security starter presente, nenhuma config liberando endpoints | `SecurityDevConfig` com perfil `dev` libera tudo |
 
 ### Pós-Fase 0 — Ajustes gerais
-- **Java 17 → 21**: Alvo de compilação atualizado (`pom.xml`, roadmap, system prompt)
-- **Spring Boot 3 → 4.1**: Corrigido no system prompt do opencode.json
-- **Renomeação para Triê**: Pacote `com.prataelua` → `com.trie`, banco `prata_e_lua` → `trie_db`, class `EcommercePrataLuaApplication` → `EcommerceTrieApplication`
-- **Springdoc path**: `/swagger-ui.html` → `/swagger-ui` (compatível com Springdoc 3.0.2)
+- **Java 17 → 21**: Alvo de compilação atualizado no `pom.xml`. **Função:** eliminar diferença entre compilação e runtime (JDK 21 instalado), liberar features da linguagem (records, pattern matching).
+- **Renomeação para Triê**: Todo o projeto renomeado: pacote `com.prataelua` → `com.trie`, banco `prata_e_lua` → `trie_db`, classe principal renomeada.
+- **Springdoc path**: `/swagger-ui.html` → `/swagger-ui` — compatível com a versão 3.0.2 que usa caminho diferente.
 
 ## Fase 1 — Modelagem de Dados
 
