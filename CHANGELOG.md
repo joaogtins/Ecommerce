@@ -74,3 +74,18 @@
 - `OrderStatus.java`: `DRAFT → PENDING → PAID → PREPARING → OUT_FOR_DELIVERY → DELIVERED → CANCELLED`
 - `PaymentStatus.java`: `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED`
 - `UserRole.java`: `CUSTOMER`, `ADMIN`
+
+### Passo 1.3 — Entidades JPA
+- **Product**: nome, descrição, categoria, material, pricingType, pricePerGram, active, timestamps, @OneToMany variants
+- **ProductVariant**: product, size, weightInGrams, price, sku, isUniquePiece, @Transient stockQuantity, @Version, active
+- **StockMovement**: variant, type (IN/OUT/RESERVE/RELEASE), quantity, reason, orderReference, createdAt
+- **Customer**: name, email, password, phone, role, @OneToMany addresses, createdAt
+- **Address**: customer, street, number, complement, neighborhood, city, state, zipCode, isDefault
+- **DeliveryZone**: name, city, state, allowedNeighborhoods, active
+- **Order**: customer, deliveryAddress, status (DRAFT padrão), totalAmount, reservedUntil, timestamps, @OneToMany items/statusHistory, @OneToOne payment
+- **OrderItem**: order, variant, quantity, **priceAtPurchase** (preço congelado)
+- **Payment**: order, mercadopagoPaymentId, status, method, amount, qrCode/qrCodeBase64, timestamps
+- **OrderStatusHistory**: order, fromStatus, toStatus, changedAt, notes
+
+### Dependências adicionadas
+- **lombok**: `@Getter`, `@Setter`, `@NoArgsConstructor`, `@AllArgsConstructor`, `@Builder` em todas as entidades (reduz boilerplate)
