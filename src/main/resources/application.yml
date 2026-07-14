@@ -29,7 +29,7 @@ springdoc:
   api-docs:
     path: /api-docs
   swagger-ui:
-    path: /swagger-ui.html
+    path: /swagger-ui
 
 app:
   jwt:
