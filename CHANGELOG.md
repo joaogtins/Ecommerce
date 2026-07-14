@@ -65,38 +65,65 @@
 ## Fase 1 — Modelagem de Dados
 
 ### Passo 1.1 — Estrutura de pacotes
-- Criada estrutura de diretórios em `src/main/java/com/trie/ecommerce/`:
+- Criada hierarquia de diretórios em `src/main/java/com/trie/ecommerce/` para separar responsabilidades:
   `config/`, `controller/`, `dto/request/`, `dto/response/`, `entity/`, `enums/`, `exception/`, `mapper/`, `repository/`, `security/`, `service/`
+- **Função:** organizar o código por camada (MVC), facilitando navegação e manutenção.
+- **Decisão:** pacotes separados para `dto/request` e `dto/response` em vez de um único `dto/` — evita misturar classes de entrada e saída da API.
 
 ### Passo 1.2 — Enums
-- `PricingType.java`: `FIXED`, `BY_GRAM`
-- `StockMovementType.java`: `IN`, `OUT`, `RESERVE`, `RELEASE`
-- `OrderStatus.java`: `DRAFT → PENDING → PAID → PREPARING → OUT_FOR_DELIVERY → DELIVERED → CANCELLED`
-- `PaymentStatus.java`: `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED`
-- `UserRole.java`: `CUSTOMER`, `ADMIN`
+- **`PricingType`** (`enums/PricingType.java`): `FIXED`, `BY_GRAM`
+  - Função: define como o preço do produto é calculado. `BY_GRAM` permite precificar por peso (comum em joias de prata).
+- **`StockMovementType`** (`enums/StockMovementType.java`): `IN`, `OUT`, `RESERVE`, `RELEASE`
+  - Função: classifica cada movimentação de estoque. `RESERVE` separa itens no carrinho, `RELEASE` devolve ao expirar a reserva.
+- **`OrderStatus`** (`enums/OrderStatus.java`): `DRAFT → PENDING → PAID → PREPARING → OUT_FOR_DELIVERY → DELIVERED → CANCELLED`
+  - Função: máquina de estados do pedido. `DRAFT` funciona como carrinho ativo.
+- **`PaymentStatus`** (`enums/PaymentStatus.java`): `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED`
+  - Função: espelha os status retornados pelo Mercado Pago no webhook.
+- **`UserRole`** (`enums/UserRole.java`): `CUSTOMER`, `ADMIN`
+  - Função: diferencia cliente comum de administrador para controle de acesso (Fase 7).
+- **Decisão:** todos usam `@Enumerated(EnumType.STRING)` — se a ordem dos valores mudar no código, os dados salvos no banco não quebram.
 
-### Passo 1.3 — Entidades JPA
-- **Product**: nome, descrição, categoria, material, pricingType, pricePerGram, active, timestamps, @OneToMany variants
-- **ProductVariant**: product, size, weightInGrams, price, sku, isUniquePiece, @Transient stockQuantity, @Version, active
-- **StockMovement**: variant, type (IN/OUT/RESERVE/RELEASE), quantity, reason, orderReference, createdAt
-- **Customer**: name, email, password, phone, role, @OneToMany addresses, createdAt
-- **Address**: customer, street, number, complement, neighborhood, city, state, zipCode, isDefault
-- **DeliveryZone**: name, city, state, allowedNeighborhoods, active
-- **Order**: customer, deliveryAddress, status (DRAFT padrão), totalAmount, reservedUntil, timestamps, @OneToMany items/statusHistory, @OneToOne payment
-- **OrderItem**: order, variant, quantity, **priceAtPurchase** (preço congelado)
-- **Payment**: order, mercadopagoPaymentId, status, method, amount, qrCode/qrCodeBase64, timestamps
-- **OrderStatusHistory**: order, fromStatus, toStatus, changedAt, notes
-
-### Dependências adicionadas
-- **lombok**: `@Getter`, `@Setter`, `@NoArgsConstructor`, `@AllArgsConstructor`, `@Builder` em todas as entidades (reduz boilerplate)
+### Passo 1.3 a 1.12 — Entidades JPA
+- **`Product`** (`entity/Product.java`)
+  - Função: representa um produto do catálogo (anel, colar, pulseira). `pricingType` decide se o preço é fixo ou por grama. `@OneToMany variants` carrega as variações (tamanhos).
+  - **Decisão:** `@PrePersist` e `@PreUpdate` para timestamps automáticos — evita esquecer de setar createdAt/updatedAt na mão.
+- **`ProductVariant`** (`entity/ProductVariant.java`)
+  - Função: variação concreta do produto (ex: anel tamanho 18, 5g). `isUniquePiece` marca peças únicas (estoque máximo 1). `@Version` prepara lock otimista para concorrência (Fase 4).
+  - **Decisão:** `stockQuantity` é `@Transient` — nunca persistido, sempre calculado do histórico de movimentos.
+- **`StockMovement`** (`entity/StockMovement.java`)
+  - Função: registro imutável de cada movimentação. `orderReference` vincula a movimentação ao pedido que a causou.
+  - **Decisão:** estoque é **100% auditável** — nunca se perde o histórico de como cada unidade entrou/saiu.
+- **`Customer`** (`entity/Customer.java`)
+  - Função: dados do cliente. `role` default `CUSTOMER`. `@OneToMany addresses` permite múltiplos endereços cadastrados.
+- **`Address`** (`entity/Address.java`)
+  - Função: endereço vinculado a um cliente. `isDefault` marca o endereço principal para entrega.
+- **`DeliveryZone`** (`entity/DeliveryZone.java`)
+  - Função: define áreas onde a entrega é feita. `allowedNeighborhoods` como texto delimitado por vírgulas — simples de consultar com `LIKE`.
+  - **Decisão:** modelo de lista fixa de bairros em vez de raio geográfico. Mais simples e atende o caso real (você mesmo entrega).
+- **`Order`** (`entity/Order.java`)
+  - Função: pedido/carrinho. `status = DRAFT` significa carrinho ativo. `reservedUntil` controla expiração da reserva de estoque. `totalAmount` é calculado e armazenado.
+  - **Decisão:** `Order` acumula múltiplas responsabilidades (carrinho, pedido, histórico) porque no fluxo real são o mesmo objeto em estados diferentes.
+- **`OrderItem`** (`entity/OrderItem.java`)
+  - Função: item dentro do pedido. `priceAtPurchase` congela o preço no momento da compra.
+  - **Decisão crítica:** o preço nunca é puxado do `ProductVariant.price` atual — se o admin alterar o preço depois, pedidos antigos não são afetados.
+- **`Payment`** (`entity/Payment.java`)
+  - Função: representa a cobrança no Mercado Pago. `mercadopagoPaymentId` vincula ao ID externo. `qrCode` e `qrCodeBase64` armazenam o PIX gerado.
+- **`OrderStatusHistory`** (`entity/OrderStatusHistory.java`)
+  - Função: auditoria de cada transição de status. Permite ao cliente acompanhar "linha do tempo" do pedido e ao admin ver o histórico completo.
+- **Lombok**: `@Getter/@Setter/@NoArgsConstructor/@AllArgsConstructor/@Builder` adicionados para reduzir boilerplate. **Decisão:** Lombok gera os métodos em tempo de compilação, eliminando centenas de linhas de getters/setters manuais sem impacto em runtime.
 
 ### Passo 1.13 — Migration Flyway V1
-- Criado `V1__create_tables.sql` com todas as tabelas, FKs, índices e constraints:
-  `products`, `product_variants`, `stock_movements`, `customers`, `addresses`,
-  `delivery_zones`, `orders`, `order_items`, `payments`, `order_status_history`
-- Nomenclatura: snake_case, plural, índices em colunas mais consultadas
-- Relacionamentos com ON DELETE CASCADE/SET NULL adequados
-- Só executado no perfil padrão (PostgreSQL). Perfil `dev` usa Hibernate ddl-auto.
+- **`V1__create_tables.sql`** (`resources/db/migration/V1__create_tables.sql`)
+  - Função: versão 1 do schema do banco. Toda vez que o schema mudar, uma nova migration (V2, V3...) é criada — nunca se altera uma migration já aplicada.
+  - **Decisões:**
+    - `BIGSERIAL` para IDs (auto-incremento PostgreSQL)
+    - `NUMERIC(10,2)` para valores monetários (nunca `double`/`float`)
+    - `NUMERIC(10,4)` para peso (4 casas decimais para precisão de gramas)
+    - `VARCHAR(20)` para enums (STRING) — se o enum crescer, aumenta o tamanho na migration seguinte
+    - Foreign keys com `ON DELETE CASCADE` em relações de pertencimento (ex: deletar produto → deleta variantes)
+    - `ON DELETE SET NULL` em delivery_address — se um endereço for removido, o pedido mantém-se com endereço nulo
+    - Índices em colunas de busca frequente (sku, email, status, customer_id, variant_id)
+  - **Importante:** migrations só rodam no perfil padrão (PostgreSQL). O perfil `dev` usa Hibernate `ddl-auto: update` com H2, ignorando Flyway.
 
 ## Fase 2 — Estoque e Produtos (CRUD) + Tratamento de Erro Global
 
