@@ -14,8 +14,8 @@
 
 ## Changelog
 
-- Atualize `CHANGELOG.md` sempre que uma fase do roadmap for concluída.
-- Inclua: o que foi feito, desvios do plano original, e motivos técnicos por trás de cada decisão.
+- Atualize `CHANGELOG.md` **a cada commit**, não apenas no fim da fase.
+- Inclua: arquivos criados/modificados, desvios do plano original, e motivos técnicos por trás de cada decisão.
 
 ## Segurança
 

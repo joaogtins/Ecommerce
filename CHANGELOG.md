@@ -54,4 +54,23 @@
 | Docker não rodando | Ativado Docker Desktop |
 
 ### Notas de desenvolvimento
-- **SecurityDevConfig**: Configuração temporária que libera todos os endpoints no perfil `dev`. Remover quando a Fase 7 (Autenticação JWT) for implementada. O perfil padrão (sem `dev`) ainda exibe tela de login do Spring Security — se quiser testar sem auth, rode com `-Dspring-boot.run.profiles=dev`.
+- **SecurityDevConfig**: Configuração temporária que libera todos os endpoints no perfil `dev`. Remover quando a Fase 7 (Autenticação JWT) for implementada.
+
+### Pós-Fase 0 — Ajustes gerais
+- **Java 17 → 21**: Alvo de compilação atualizado (`pom.xml`, roadmap, system prompt)
+- **Spring Boot 3 → 4.1**: Corrigido no system prompt do opencode.json
+- **Renomeação para Triê**: Pacote `com.prataelua` → `com.trie`, banco `prata_e_lua` → `trie_db`, class `EcommercePrataLuaApplication` → `EcommerceTrieApplication`
+- **Springdoc path**: `/swagger-ui.html` → `/swagger-ui` (compatível com Springdoc 3.0.2)
+
+## Fase 1 — Modelagem de Dados
+
+### Passo 1.1 — Estrutura de pacotes
+- Criada estrutura de diretórios em `src/main/java/com/trie/ecommerce/`:
+  `config/`, `controller/`, `dto/request/`, `dto/response/`, `entity/`, `enums/`, `exception/`, `mapper/`, `repository/`, `security/`, `service/`
+
+### Passo 1.2 — Enums
+- `PricingType.java`: `FIXED`, `BY_GRAM`
+- `StockMovementType.java`: `IN`, `OUT`, `RESERVE`, `RELEASE`
+- `OrderStatus.java`: `DRAFT → PENDING → PAID → PREPARING → OUT_FOR_DELIVERY → DELIVERED → CANCELLED`
+- `PaymentStatus.java`: `PENDING`, `APPROVED`, `REJECTED`, `REFUNDED`
+- `UserRole.java`: `CUSTOMER`, `ADMIN`
