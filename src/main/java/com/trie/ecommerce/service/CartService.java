@@ -1,9 +1,11 @@
 package com.trie.ecommerce.service;
 
 import com.trie.ecommerce.dto.request.AddItemRequest;
+import com.trie.ecommerce.dto.response.CheckoutResponse;
 import com.trie.ecommerce.dto.response.OrderResponse;
 import com.trie.ecommerce.entity.*;
 import com.trie.ecommerce.enums.OrderStatus;
+import com.trie.ecommerce.enums.PaymentStatus;
 import com.trie.ecommerce.enums.PricingType;
 import com.trie.ecommerce.enums.StockMovementType;
 import com.trie.ecommerce.exception.BusinessException;
@@ -13,10 +15,13 @@ import com.trie.ecommerce.mapper.OrderMapper;
 import com.trie.ecommerce.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -30,6 +35,10 @@ public class CartService {
     private final StockMovementRepository stockMovementRepository;
     private final StockService stockService;
     private final CustomerRepository customerRepository;
+    private final PaymentRepository paymentRepository;
+
+    @Value("${app.whatsapp.number}")
+    private String whatsappNumber;
 
     private static final int RESERVATION_MINUTES = 15;
 
@@ -135,6 +144,65 @@ public class CartService {
         cart.setTotalAmount(BigDecimal.ZERO);
         cart.setReservedUntil(null);
         orderRepository.save(cart);
+    }
+
+    @Transactional
+    public CheckoutResponse checkout(Long customerId) {
+        Order cart = orderRepository.findByCustomerIdAndStatus(customerId, OrderStatus.DRAFT)
+            .orElseThrow(() -> new ResourceNotFoundException("Carrinho nao encontrado"));
+
+        if (cart.getItems().isEmpty()) {
+            throw new BusinessException("Carrinho vazio");
+        }
+
+        String message = buildWhatsAppMessage(cart);
+
+        cart.setStatus(OrderStatus.PENDING);
+        cart.setReservedUntil(LocalDateTime.now().plusMinutes(30));
+        cart.setUpdatedAt(LocalDateTime.now());
+
+        Payment payment = Payment.builder()
+            .order(cart)
+            .status(PaymentStatus.PENDING)
+            .method("PIX")
+            .amount(cart.getTotalAmount())
+            .build();
+        paymentRepository.save(payment);
+        cart.setPayment(payment);
+
+        orderRepository.save(cart);
+
+        String waLink = "https://wa.me/" + whatsappNumber + "?text="
+            + URLEncoder.encode(message, StandardCharsets.UTF_8);
+
+        return new CheckoutResponse(cart.getId(), OrderStatus.PENDING, waLink, cart.getTotalAmount());
+    }
+
+    private String buildWhatsAppMessage(Order order) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Olá! Gostaria de confirmar o pedido *").append(order.getId()).append("*:\n\n");
+
+        for (OrderItem item : order.getItems()) {
+            String name = item.getVariant().getProduct().getName();
+            String size = item.getVariant().getSize();
+            BigDecimal subtotal = item.getPriceAtPurchase().multiply(BigDecimal.valueOf(item.getQuantity()));
+            sb.append("• ").append(name);
+            if (size != null) sb.append(" (").append(size).append(")");
+            sb.append(" x").append(item.getQuantity())
+              .append(" = R$ ").append(String.format("%.2f", subtotal))
+              .append("\n");
+        }
+
+        sb.append("\n*Total: R$ ").append(String.format("%.2f", order.getTotalAmount())).append("*\n");
+
+        if (order.getDeliveryAddress() != null) {
+            Address addr = order.getDeliveryAddress();
+            sb.append("\nEndereço: ").append(addr.getStreet()).append(", ").append(addr.getNumber())
+              .append(" - ").append(addr.getNeighborhood())
+              .append(", ").append(addr.getCity()).append("/").append(addr.getState());
+        }
+
+        return sb.toString();
     }
 
     private int countReservedInOtherCarts(Long variantId, Long customerId) {

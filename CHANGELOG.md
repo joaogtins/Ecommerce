@@ -283,3 +283,31 @@
 |---|---|---|
 | `FOR NO KEY UPDATE` quebra no H2 | H2 não suporta esse lock do PostgreSQL | Testes rodam com PostgreSQL; H2 usa `schema-dev.sql` para shedlock |
 | Dupla contagem de reservas no estoque | `calculateCurrentStock()` já subtrai reservas, e `countReservedInOtherCarts()` subtrai de novo | Separado em `calculatePhysicalStock()` (só IN/OUT) + `countReservedByOthers()` + `countReservedByCustomer()` |
+
+---
+
+## Fase 5 — Checkout via WhatsApp
+
+### Passo 5.1 — Configuração
+- **`application.yml`**: removido bloco `app.mercadopago`, adicionado `app.whatsapp.number` com variável de ambiente `WHATSAPP_NUMBER`.
+
+### Passo 5.2 — Simplificação da entidade Payment
+- **`Payment.java`** (`entity/Payment.java`): removidos campos `mercadopagoPaymentId`, `qrCode`, `qrCodeBase64` (não fazem mais sentido sem gateway). Adicionados `confirmedBy` (email do admin que confirmou) e `confirmedAt` (timestamp da confirmação).
+- **Decisão:** o fluxo de pagamento é manual (admin confirma), então não há necessidade de armazenar dados de gateway externo.
+
+### Passo 5.3 — Migration V9
+- **`V9__simplify_payments_table.sql`** (`resources/db/migration/V9__simplify_payments_table.sql`): DROP COLUMN de campos MP obsoletos, DROP INDEX, ADD COLUMN `confirmed_by` e `confirmed_at`.
+- **Nota:** V9 porque V1, V5, V6, V7, V8 já foram aplicados.
+
+### Passo 5.4 — Endpoint de checkout
+- **`CheckoutResponse`** (`dto/response/CheckoutResponse.java`): `orderId`, `status`, `whatsappLink`, `totalAmount`.
+- **`CartService.checkout()`**: transiciona DRAFT → PENDING, cria `Payment` com status PENDING, monta mensagem do WhatsApp com itens, quantidades, subtotais e total, retorna URL `wa.me` já montada.
+- **`CheckoutController`** (`controller/CheckoutController.java`): `POST /api/orders/{id}/checkout`.
+
+### Testes realizados
+| Teste | Resultado |
+|---|---|
+| Checkout com carrinho válido | ✅ `orderId`, `status: PENDING`, link WhatsApp completo |
+| Checkout duplicado (já PENDING) | ✅ `NOT_FOUND` (não é mais DRAFT) |
+| Payment criado no banco | ✅ `status: PENDING, method: PIX, amount: 700.00` |
+| Link WhatsApp URL-encoded | ✅ contém itens, quantidades, subtotais, total |

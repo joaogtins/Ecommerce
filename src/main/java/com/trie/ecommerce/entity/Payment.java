@@ -24,8 +24,6 @@ public class Payment {
     @JoinColumn(nullable = false)
     private Order order;
 
-    private Long mercadopagoPaymentId;
-
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;
 
@@ -34,11 +32,9 @@ public class Payment {
     @Column(precision = 10, scale = 2)
     private BigDecimal amount;
 
-    @Column(columnDefinition = "TEXT")
-    private String qrCode;
+    private String confirmedBy;
 
-    @Column(columnDefinition = "TEXT")
-    private String qrCodeBase64;
+    private LocalDateTime confirmedAt;
 
     private LocalDateTime createdAt;
 
