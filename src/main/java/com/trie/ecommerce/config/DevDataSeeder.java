@@ -1,6 +1,9 @@
 package com.trie.ecommerce.config;
 
+import com.trie.ecommerce.entity.Customer;
 import com.trie.ecommerce.entity.DeliveryZone;
+import com.trie.ecommerce.enums.UserRole;
+import com.trie.ecommerce.repository.CustomerRepository;
 import com.trie.ecommerce.repository.DeliveryZoneRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +18,7 @@ import org.springframework.stereotype.Component;
 public class DevDataSeeder implements CommandLineRunner {
 
     private final DeliveryZoneRepository deliveryZoneRepository;
+    private final CustomerRepository customerRepository;
 
     @Override
     public void run(String... args) {
@@ -50,5 +54,19 @@ public class DevDataSeeder implements CommandLineRunner {
             .build());
 
         log.info("Delivery zones seeded successfully");
+
+        if (customerRepository.count() > 0) {
+            log.info("Customers already seeded, skipping");
+            return;
+        }
+
+        log.info("Seeding test customer...");
+        customerRepository.save(Customer.builder()
+            .name("Cliente Teste")
+            .email("teste@email.com")
+            .password("senha123")
+            .role(UserRole.CUSTOMER)
+            .build());
+        log.info("Test customer seeded with id=1, email=teste@email.com");
     }
 }

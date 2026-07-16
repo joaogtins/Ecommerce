@@ -245,3 +245,41 @@
 - **`V7__seed_delivery_zones.sql`** (`resources/db/migration/V7__seed_delivery_zones.sql`): insere 5 zonas de entrega em São Paulo (Zona Sul, Oeste, Norte, Leste, Centro) com seus respectivos bairros.
 - **`DevDataSeeder`** (`config/DevDataSeeder.java`): `CommandLineRunner` ativo no perfil `dev` que popula as mesmas zonas no H2 (já que Flyway é desligado nesse perfil).
 - **Nota:** o V2 original do roadmap foi nomeado V7 porque V5 e V6 já estavam aplicados — Flyway exige versões sequenciais.
+
+---
+
+## Fase 4 — Carrinho e Reserva de Estoque
+
+### Passo 4.1 — Repositórios
+- **`OrderRepository`** (`repository/OrderRepository.java`): `findByCustomerIdAndStatus()`, `findByStatusAndReservedUntilBefore()`, `findByIdWithLock()` com `PESSIMISTIC_WRITE` para lock de linha no PostgreSQL.
+- **`CustomerRepository`** (`repository/CustomerRepository.java`): `findByEmail()`, `existsByEmail()`.
+- **`PaymentRepository`** (`repository/PaymentRepository.java`): `findByOrderId()`.
+- **`OrderStatusHistoryRepository`** (`repository/OrderStatusHistoryRepository.java`): `findByOrderIdOrderByChangedAtAsc()`.
+- **`StockMovementRepository`**: adicionados `calculatePhysicalStock()` (IN - OUT, sem reservas) e queries nativas para `countActiveReservationsByOthers()` e `countActiveReservationsByCustomer()`.
+
+### Passo 4.2 — DTOs e Mapper
+- **`AddItemRequest`** (`dto/request/AddItemRequest.java`): `variantId` + `quantity` com Bean Validation.
+- **`OrderResponse`** (`dto/response/OrderResponse.java`): dados do pedido/carrinho com lista de items.
+- **`OrderItemResponse`** (`dto/response/OrderItemResponse.java`): item individual com `productName`, `subtotal`.
+- **`OrderMapper`** (`mapper/OrderMapper.java`): conversão Order → DTO com navegação segura nas relações lazy.
+
+### Passo 4.3 — CartService (reserva atômica)
+- **`CartService`** (`service/CartService.java`): `addItemToCart()` usa `findByIdWithLock()` (SELECT ... FOR UPDATE) na variante antes de calcular disponibilidade.
+- **Cálculo de disponibilidade:** `available = physicalStock - reservedByOthers - alreadyReservedByMe`. Evita que dois clientes reservem a mesma peça única e impede que um cliente reserve além do disponível considerando suas próprias reservas anteriores.
+- **Decisão crítica:** o lock pessimista no PostgreSQL garante atomicidade — se duas threads tentam reservar a mesma variante simultaneamente, a segunda espera a primeira liberar o lock.
+
+### Passo 4.4 — ShedLock + Expiração de Reserva
+- **`ShedLockConfig`** (`config/ShedLockConfig.java`): `@EnableSchedulerLock` com `JdbcTemplateLockProvider`.
+- **`ReservationExpirationService`** (`service/ReservationExpirationService.java`): `@Scheduled(fixedRate = 60_000)` com `@SchedulerLock` para expirar carrinhos DRAFT com `reservedUntil` vencido — libera estoque e cancela o pedido.
+- **`V8__create_shedlock_table.sql`** (`resources/db/migration/V8__create_shedlock_table.sql`).
+- **`schema-dev.sql`** (`resources/schema-dev.sql`): cria a tabela shedlock no H2 (Flyway desligado no perfil dev).
+
+### Passo 4.5 — CartController
+- **`CartController`** (`controller/CartController.java`): `GET /api/cart`, `POST /api/cart/items`, `DELETE /api/cart/items/{id}`, `DELETE /api/cart`.
+- Usa `X-Customer-Id` header (placeholder — será substituído por `@AuthenticationPrincipal` na Fase 7).
+
+### Correções aplicadas
+| Problema | Causa | Solução |
+|---|---|---|
+| `FOR NO KEY UPDATE` quebra no H2 | H2 não suporta esse lock do PostgreSQL | Testes rodam com PostgreSQL; H2 usa `schema-dev.sql` para shedlock |
+| Dupla contagem de reservas no estoque | `calculateCurrentStock()` já subtrai reservas, e `countReservedInOtherCarts()` subtrai de novo | Separado em `calculatePhysicalStock()` (só IN/OUT) + `countReservedByOthers()` + `countReservedByCustomer()` |

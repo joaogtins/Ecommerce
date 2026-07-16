@@ -45,4 +45,9 @@ public class StockService {
         Integer stock = stockMovementRepository.calculateCurrentStock(variantId);
         return stock != null ? stock : 0;
     }
+
+    public int calculatePhysicalStock(Long variantId) {
+        Integer stock = stockMovementRepository.calculatePhysicalStock(variantId);
+        return stock != null ? stock : 0;
+    }
 }
