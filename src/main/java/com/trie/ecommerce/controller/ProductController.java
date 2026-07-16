@@ -60,4 +60,28 @@ public class ProductController {
     public void delete(@PathVariable Long id) {
         productService.delete(id);
     }
+
+    @GetMapping("/featured")
+    @Operation(summary = "Listar produtos em destaque (Mais vendidos)")
+    public List<ProductResponse> findFeatured() {
+        return productService.findFeatured();
+    }
+
+    @GetMapping("/new-collection")
+    @Operation(summary = "Listar produtos da nova coleção")
+    public List<ProductResponse> findNewCollection() {
+        return productService.findNewCollection();
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Buscar produtos por texto")
+    public List<ProductResponse> search(@RequestParam String q) {
+        return productService.search(q);
+    }
+
+    @GetMapping("/categories")
+    @Operation(summary = "Listar categorias distintas")
+    public List<String> listCategories() {
+        return productService.listCategories();
+    }
 }

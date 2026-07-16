@@ -15,6 +15,9 @@ public record ProductResponse(
     PricingType pricingType,
     BigDecimal pricePerGram,
     Boolean active,
+    String imageUrl,
+    Boolean featured,
+    Boolean newCollection,
     LocalDateTime createdAt,
     List<VariantResponse> variants
 ) {}

@@ -10,4 +10,8 @@ public record VariantResponse(
     String sku,
     Boolean isUniquePiece,
     Integer stockQuantity
-) {}
+) {
+    public VariantResponse withStock(Integer stock) {
+        return new VariantResponse(id, size, weightInGrams, price, sku, isUniquePiece, stock);
+    }
+}

@@ -11,5 +11,8 @@ public record UpdateProductRequest(
     String material,
     String pricingType,
     @Positive BigDecimal pricePerGram,
-    Boolean active
+    Boolean active,
+    String imageUrl,
+    Boolean featured,
+    Boolean newCollection
 ) {}

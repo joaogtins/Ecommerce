@@ -4,8 +4,10 @@ import com.trie.ecommerce.dto.request.CreateProductRequest;
 import com.trie.ecommerce.dto.request.CreateVariantRequest;
 import com.trie.ecommerce.dto.request.UpdateProductRequest;
 import com.trie.ecommerce.dto.response.ProductResponse;
+import com.trie.ecommerce.dto.response.VariantResponse;
 import com.trie.ecommerce.entity.Product;
 import com.trie.ecommerce.entity.ProductVariant;
+import com.trie.ecommerce.enums.PricingType;
 import com.trie.ecommerce.exception.ResourceNotFoundException;
 import com.trie.ecommerce.mapper.ProductMapper;
 import com.trie.ecommerce.repository.ProductRepository;
@@ -21,6 +23,7 @@ import java.util.UUID;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final StockService stockService;
 
     @Transactional
     public ProductResponse create(CreateProductRequest request) {
@@ -38,7 +41,8 @@ public class ProductService {
 
         CreateProductRequest updatedRequest = new CreateProductRequest(
             request.name(), request.description(), request.category(),
-            request.material(), request.pricingType(), request.pricePerGram(), variants
+            request.material(), request.pricingType(), request.pricePerGram(),
+            request.imageUrl(), request.featured(), request.newCollection(), variants
         );
 
         Product product = ProductMapper.toEntity(updatedRequest);
@@ -46,15 +50,18 @@ public class ProductService {
         return ProductMapper.toResponse(product);
     }
 
+    @Transactional(readOnly = true)
     public ProductResponse findById(Long id) {
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Produto nao encontrado: " + id));
-        return ProductMapper.toResponse(product);
+        return populateStock(ProductMapper.toResponse(product));
     }
 
+    @Transactional(readOnly = true)
     public List<ProductResponse> findAll() {
         return productRepository.findByActiveTrue().stream()
             .map(ProductMapper::toResponse)
+            .map(this::populateStock)
             .toList();
     }
 
@@ -71,6 +78,9 @@ public class ProductService {
             product.setPricingType(com.trie.ecommerce.enums.PricingType.valueOf(request.pricingType()));
         if (request.pricePerGram() != null) product.setPricePerGram(request.pricePerGram());
         if (request.active() != null) product.setActive(request.active());
+        if (request.imageUrl() != null) product.setImageUrl(request.imageUrl());
+        if (request.featured() != null) product.setFeatured(request.featured());
+        if (request.newCollection() != null) product.setNewCollection(request.newCollection());
 
         product = productRepository.save(product);
         return ProductMapper.toResponse(product);
@@ -82,6 +92,50 @@ public class ProductService {
             .orElseThrow(() -> new ResourceNotFoundException("Produto nao encontrado: " + id));
         product.setActive(false);
         productRepository.save(product);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> findFeatured() {
+        return productRepository.findByFeaturedTrueAndActiveTrue().stream()
+            .map(ProductMapper::toResponse)
+            .map(this::populateStock)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> findNewCollection() {
+        return productRepository.findByNewCollectionTrueAndActiveTrue().stream()
+            .map(ProductMapper::toResponse)
+            .map(this::populateStock)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> search(String query) {
+        return productRepository
+            .findByNameContainingIgnoreCaseOrCategoryContainingIgnoreCase(query, query)
+            .stream()
+            .map(ProductMapper::toResponse)
+            .map(this::populateStock)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> listCategories() {
+        return productRepository.findDistinctActiveCategories();
+    }
+
+    private ProductResponse populateStock(ProductResponse response) {
+        List<VariantResponse> variants = response.variants().stream()
+            .map(v -> v.withStock(stockService.calculateCurrentStock(v.id())))
+            .toList();
+        return new ProductResponse(
+            response.id(), response.name(), response.description(),
+            response.category(), response.material(), response.pricingType(),
+            response.pricePerGram(), response.active(), response.imageUrl(),
+            response.featured(), response.newCollection(),
+            response.createdAt(), variants
+        );
     }
 
     private String generateSku() {

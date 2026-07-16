@@ -188,3 +188,31 @@
   - Função: movimentação de estoque por produto. `POST /{productId}/stock/movements` registra entrada/saída, `GET /{productId}/stock` retorna saldo.
   - `@Tag` + `@Operation` + `@ApiResponse` documentam cada endpoint no Swagger.
 - **Anotações Swagger adicionadas** para que o Swagger UI (em `/swagger-ui`) exiba descrições legíveis e códigos de resposta esperados.
+
+### Passo 2.9 — Campos de catálogo no Product
+- **`Product.java`** (`entity/Product.java`): adicionados campos `imageUrl` (String), `featured` (Boolean default false), `newCollection` (Boolean default false)
+- **Função:** permitir que o admin marque produtos para as seções "Mais vendidos" (featured) e "Nova coleção" (newCollection) do frontend, além de armazenar a URL da imagem principal do produto.
+- **Decisão:** flags booleanas no próprio Product em vez de tabela associativa — mais simples e consultas mais rápidas com índices diretos.
+
+### Passo 2.10 — Migration V5 — campos de catálogo
+- **`V5__add_product_catalog_fields.sql`** (`resources/db/migration/V5__add_product_catalog_fields.sql`): ALTER TABLE na tabela `products` adicionando `image_url`, `featured`, `new_collection` com índices.
+- **Decisão:** migration separada (V5) em vez de alterar a V1 — migrations já aplicadas nunca são modificadas. O perfil `dev` (H2 + ddl-auto: update) cria as colunas automaticamente pelas anotações JPA.
+
+### Passo 2.11 — DTOs, Mapper e Service atualizados
+- **DTOs**: `CreateProductRequest`, `UpdateProductRequest`, `ProductResponse` receberam os campos `imageUrl`, `featured`, `newCollection` (todos opcionais).
+- **Mapper**: `ProductMapper.toResponse()` e `toEntity()` propagam os novos campos.
+- **Service**: `ProductService.update()` faz update condicional dos novos campos.
+
+### Passo 2.12 — Correção do bug stockQuantity
+- **Problema:** `VariantResponse.stockQuantity` retornava sempre `null` — o campo `@Transient` nunca era populado.
+- **Solução:** `ProductService.populateStock()` injeta `StockService` e sobrescreve cada `VariantResponse` com o estoque calculado em tempo real via `VariantResponse.withStock()`.
+- **Decisão:** mantido `VariantResponse` como `record` imutável com método *wither* (`withStock`) que retorna uma nova instância com o stock populado — evita mutabilidade e efeitos colaterais.
+
+### Passo 2.13 — Novos endpoints de catálogo
+- **`ProductRepository`**: adicionados `findByFeaturedTrueAndActiveTrue()`, `findByNewCollectionTrueAndActiveTrue()`, `findByNameContainingIgnoreCaseOrCategoryContainingIgnoreCase()`, `findDistinctActiveCategories()`.
+- **`ProductController`**: quatro novos endpoints:
+  - `GET /api/products/featured` — produtos em destaque
+  - `GET /api/products/new-collection` — nova coleção
+  - `GET /api/products/search?q=texto` — busca textual
+  - `GET /api/products/categories` — lista de categorias distintas
+- **Correção:** adicionado `@Transactional(readOnly = true)` em todos os métodos de leitura para evitar `LazyInitializationException` (o `open-in-view: false` fechava a sessão antes do mapper acessar as variantes lazy).

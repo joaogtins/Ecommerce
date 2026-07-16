@@ -48,6 +48,14 @@ public class Product {
     @Builder.Default
     private Boolean active = true;
 
+    private String imageUrl;
+
+    @Builder.Default
+    private Boolean featured = false;
+
+    @Builder.Default
+    private Boolean newCollection = false;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 

@@ -16,5 +16,8 @@ public record CreateProductRequest(
     String material,
     @NotNull PricingType pricingType,
     @Positive BigDecimal pricePerGram,
+    String imageUrl,
+    Boolean featured,
+    Boolean newCollection,
     @NotEmpty List<CreateVariantRequest> variants
 ) {}

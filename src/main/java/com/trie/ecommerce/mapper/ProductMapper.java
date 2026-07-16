@@ -26,6 +26,9 @@ public class ProductMapper {
             product.getPricingType(),
             product.getPricePerGram(),
             product.getActive(),
+            product.getImageUrl(),
+            product.getFeatured(),
+            product.getNewCollection(),
             product.getCreatedAt(),
             Optional.ofNullable(product.getVariants())
                 .orElse(Collections.emptyList())
@@ -57,6 +60,9 @@ public class ProductMapper {
             .pricePerGram(request.pricingType() == PricingType.BY_GRAM
                 ? request.pricePerGram() : null)
             .active(true)
+            .imageUrl(request.imageUrl())
+            .featured(request.featured() != null && request.featured())
+            .newCollection(request.newCollection() != null && request.newCollection())
             .build();
 
         List<ProductVariant> variants = Optional.ofNullable(request.variants())
