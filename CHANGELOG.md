@@ -221,3 +221,27 @@
 - **`V6__seed_sample_products.sql`** (`resources/db/migration/V6__seed_sample_products.sql`): insere 11 produtos com `featured`, `newCollection` e `imageUrl` populados, espelhando os dados que o frontend (`BestSellingProductsSection.tsx` e `NewCollectionHighlightSection.tsx`) espera.
 - **Decisão:** migration separada em vez de data loader no código para que os dados de exemplo estejam disponíveis desde a primeira inicialização do banco, sem depender de chamada de API.
 - **Nota:** as URLs de imagem são do Unsplash (placeholder). Substituir pelo CDN real quando disponível.
+
+---
+
+## Fase 3 — Validação de Região de Entrega
+
+### Passo 3.1 — DeliveryZoneRepository
+- **`DeliveryZoneRepository`** (`repository/DeliveryZoneRepository.java`): interface JPA com `findByCityStateAndNeighborhood()` usando `LIKE` para buscar bairro dentro de `allowedNeighborhoods`, e `findByCityAndStateAndActiveTrue()` para listar zonas disponíveis de uma cidade.
+- **Decisão:** `LIKE %:neighborhood%` é simples e funciona para o volume esperado (dezenas de bairros). Se crescer, migrar para uma tabela `delivery_neighborhoods` normalizada.
+
+### Passo 3.2 — DTOs de validação
+- **`AddressValidationRequest`** (`dto/request/AddressValidationRequest.java`): record com `@NotBlank` em street, neighborhood, city, state, zipCode.
+- **`AddressValidationResponse`** (`dto/response/AddressValidationResponse.java`): record com `valid`, `message`, e `availableNeighborhoods` (lista de bairros sugeridos quando inválido).
+
+### Passo 3.3 — DeliveryZoneService
+- **`DeliveryZoneService`** (`service/DeliveryZoneService.java`): lógica de validação. Se o bairro não for encontrado, busca todos os bairros disponíveis na cidade para sugerir ao usuário.
+- **Decisão:** a resposta inclui a lista de bairros atendidos para o frontend exibir como sugestão, melhorando a UX sem precisar de uma segunda chamada.
+
+### Passo 3.4 — AddressController
+- **`AddressController`** (`controller/AddressController.java`): `POST /api/addresses/validate` — recebe o endereço e retorna se está dentro da área de entrega.
+
+### Passo 3.5 — Seed de zonas de entrega
+- **`V7__seed_delivery_zones.sql`** (`resources/db/migration/V7__seed_delivery_zones.sql`): insere 5 zonas de entrega em São Paulo (Zona Sul, Oeste, Norte, Leste, Centro) com seus respectivos bairros.
+- **`DevDataSeeder`** (`config/DevDataSeeder.java`): `CommandLineRunner` ativo no perfil `dev` que popula as mesmas zonas no H2 (já que Flyway é desligado nesse perfil).
+- **Nota:** o V2 original do roadmap foi nomeado V7 porque V5 e V6 já estavam aplicados — Flyway exige versões sequenciais.
