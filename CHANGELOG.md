@@ -216,3 +216,8 @@
   - `GET /api/products/search?q=texto` — busca textual
   - `GET /api/products/categories` — lista de categorias distintas
 - **Correção:** adicionado `@Transactional(readOnly = true)` em todos os métodos de leitura para evitar `LazyInitializationException` (o `open-in-view: false` fechava a sessão antes do mapper acessar as variantes lazy).
+
+### Passo 2.14 — Migration V6 — seed de produtos de exemplo
+- **`V6__seed_sample_products.sql`** (`resources/db/migration/V6__seed_sample_products.sql`): insere 11 produtos com `featured`, `newCollection` e `imageUrl` populados, espelhando os dados que o frontend (`BestSellingProductsSection.tsx` e `NewCollectionHighlightSection.tsx`) espera.
+- **Decisão:** migration separada em vez de data loader no código para que os dados de exemplo estejam disponíveis desde a primeira inicialização do banco, sem depender de chamada de API.
+- **Nota:** as URLs de imagem são do Unsplash (placeholder). Substituir pelo CDN real quando disponível.

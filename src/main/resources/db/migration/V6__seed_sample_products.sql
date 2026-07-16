@@ -1,0 +1,13 @@
+INSERT INTO products (name, description, category, material, pricing_type, price_per_gram, image_url, featured, new_collection)
+VALUES
+('Colar Veneziana Fina 45cm', 'Colar confeccionado em Prata 925 com elos delicados. Fecho de segurança e acabamento artesanal.', 'Colares', 'Prata 925', 'FIXED', NULL, 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400', true, false),
+('Argola Texturizada Classic', 'Argola em Prata 925 com textura artesanal. Design clássico e versátil para o dia a dia.', 'Brincos', 'Prata 925', 'FIXED', NULL, 'https://images.unsplash.com/photo-1635767798638-3e25273a8236?w=400', true, false),
+('Anel Solitário Elegance', 'Anel com design minimalista em Prata 925. Aro confortável e acabamento polido.', 'Anéis', 'Prata 925', 'FIXED', NULL, 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400', true, false),
+('Pulseira Cosmos Prata', 'Pulseira articulada em Prata 925 com fecho de seguranca. Design contemporâneo.', 'Pulseiras', 'Prata 925', 'BY_GRAM', 8.50, 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400', true, false),
+('Pingente Triângulo Modern', 'Pingente geométrico em Prata 925. Acompanha corrente fina 45cm.', 'Pingentes', 'Prata 925', 'FIXED', NULL, 'https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=400', false, true),
+('Ear Cuff Minimalist', 'Ear cuff em Prata 950 sem necessidade de perfuração. Design leve e moderno.', 'Brincos', 'Prata 950', 'FIXED', NULL, 'https://images.unsplash.com/photo-1535639818668-c0590e1eb30a?w=400', false, true),
+('Kit Anéis Trio', 'Tres anéis delicados em Prata 925. Argolas finas em diferentes espessuras para compor o visual.', 'Anéis', 'Prata 925', 'FIXED', NULL, 'https://images.unsplash.com/photo-1600371463107-6ea0e34e7f93?w=400', false, true),
+('Brinco Waves', 'Brinco em Prata 950 com design ondulado. Pesa aproximadamente 4g o par.', 'Brincos', 'Prata 950', 'BY_GRAM', 12.50, 'https://images.unsplash.com/photo-1621991103736-6f1a2f7bd025?w=400', false, true),
+('Colar Plaquinha', 'Colar com plaquinha lisa em Prata 925. Ideal para gravação personalizada. Corrente 45cm.', 'Colares', 'Prata 925', 'FIXED', NULL, 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400', false, true),
+('Brinco Square', 'Brinco geométrico quadrado em Prata 925. Design minimalista contemporâneo.', 'Brincos', 'Prata 925', 'FIXED', NULL, 'https://images.unsplash.com/photo-1635767798638-3e25273a8236?w=400', false, true),
+('Pulseira Love Link', 'Pulseira de elos articulados em Prata 925. Fecho seguro e design romântico.', 'Pulseiras', 'Prata 925', 'BY_GRAM', 8.50, 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400', false, false);
