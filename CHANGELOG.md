@@ -311,3 +311,39 @@
 | Checkout duplicado (já PENDING) | ✅ `NOT_FOUND` (não é mais DRAFT) |
 | Payment criado no banco | ✅ `status: PENDING, method: PIX, amount: 700.00` |
 | Link WhatsApp URL-encoded | ✅ contém itens, quantidades, subtotais, total |
+
+---
+
+## Fase 6 — Motor de Status do Pedido
+
+### Passo 6.1 — OrderService
+- **`OrderService`** (`service/OrderService.java`): serviço central com validação de transições de status.
+- **`markAsPaid(orderId, confirmedBy)`**: valida se order está PENDING, registra `StockMovement OUT` para cada item (baixa definitiva de estoque), atualiza `Payment` com `confirmedBy`/`confirmedAt`, transiciona para PAID.
+- **`cancelOrder(orderId, reason)`**: valida se order está em status cancelável (PENDING, PAID, PREPARING, OUT_FOR_DELIVERY), libera estoque via `StockMovement RELEASE` se estava PENDING ou PAID.
+- **Transições válidas:** PENDING → PAID → PREPARING → OUT_FOR_DELIVERY → DELIVERED. Cancelamento permitido de qualquer status exceto DELIVERED e CANCELLED.
+
+### Passo 6.2 — DTOs e Mapper
+- **`UpdateStatusRequest`** (`dto/request/UpdateStatusRequest.java`): `status` + `reason` (opcional para cancelamento).
+- **`OrderStatusHistoryResponse`** (`dto/response/OrderStatusHistoryResponse.java`): `fromStatus`, `toStatus`, `changedAt`, `notes`.
+- **`OrderResponse`**: adicionado campo `statusHistory` (lista de transições).
+- **`OrderMapper`**: adicionado `toHistoryResponse()`.
+
+### Passo 6.3 — OrderController
+- **`OrderController`** (`controller/OrderController.java`): endpoints admin para gestão de pedidos:
+  - `GET /api/orders` — listar todos
+  - `GET /api/orders/{id}` — buscar por ID
+  - `GET /api/orders/{id}/history` — histórico de status
+  - `PATCH /api/orders/{id}/status` — atualizar status (switch por tipo)
+
+### Testes realizados
+| Teste | Resultado |
+|---|---|
+| Listar todos os pedidos | ✅ 3 orders |
+| Buscar por ID com history | ✅ History vazio (PENDING ainda) |
+| PENDING → PAID (c/ baixa estoque) | ✅ Stock 9 → 8, history registrado |
+| PAID → PREPARING | ✅ |
+| PREPARING → OUT_FOR_DELIVERY | ✅ |
+| OUT_FOR_DELIVERY → DELIVERED | ✅ |
+| DELIVERED → PAID (inválido) | ✅ `INVALID_TRANSITION` |
+| PENDING → CANCELLED c/ motivo | ✅ Estoque liberado, history com notas |
+| Histórico completo (4 transições) | ✅ `PENDING→PAID→PREPARING→OUT_FOR_DELIVERY→DELIVERED` |

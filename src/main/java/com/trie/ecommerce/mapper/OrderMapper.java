@@ -2,8 +2,11 @@ package com.trie.ecommerce.mapper;
 
 import com.trie.ecommerce.dto.response.OrderItemResponse;
 import com.trie.ecommerce.dto.response.OrderResponse;
+import com.trie.ecommerce.dto.response.OrderStatusHistoryResponse;
 import com.trie.ecommerce.entity.Order;
 import com.trie.ecommerce.entity.OrderItem;
+import com.trie.ecommerce.entity.OrderStatusHistory;
+import com.trie.ecommerce.enums.OrderStatus;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -21,6 +24,12 @@ public class OrderMapper {
             .map(OrderMapper::toResponse)
             .toList();
 
+        List<OrderStatusHistoryResponse> history = Optional.ofNullable(order.getStatusHistory())
+            .orElse(Collections.emptyList())
+            .stream()
+            .map(OrderMapper::toHistoryResponse)
+            .toList();
+
         return new OrderResponse(
             order.getId(),
             order.getCustomer().getId(),
@@ -28,7 +37,8 @@ public class OrderMapper {
             order.getTotalAmount(),
             order.getReservedUntil(),
             order.getCreatedAt(),
-            items
+            items,
+            history
         );
     }
 
@@ -45,6 +55,16 @@ public class OrderMapper {
             item.getQuantity(),
             item.getPriceAtPurchase(),
             subtotal
+        );
+    }
+
+    public static OrderStatusHistoryResponse toHistoryResponse(OrderStatusHistory history) {
+        return new OrderStatusHistoryResponse(
+            history.getId(),
+            history.getFromStatus(),
+            history.getToStatus(),
+            history.getChangedAt(),
+            history.getNotes()
         );
     }
 }

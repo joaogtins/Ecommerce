@@ -13,5 +13,6 @@ public record OrderResponse(
     BigDecimal totalAmount,
     LocalDateTime reservedUntil,
     LocalDateTime createdAt,
-    List<OrderItemResponse> items
+    List<OrderItemResponse> items,
+    List<OrderStatusHistoryResponse> statusHistory
 ) {}
