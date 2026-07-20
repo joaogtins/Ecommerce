@@ -45,11 +45,18 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/api-docs/**").permitAll()
                 .requestMatchers("/api/webhooks/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+
+                // Catálogo público (vitrine)
+                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                .requestMatchers("/api/addresses/**").permitAll()
+
+                // Admin
                 .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
-                .requestMatchers("/api/products/*/stock/**").hasRole("ADMIN")
+                .requestMatchers("/api/products/*/stock/movements").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/api/orders/*/status").hasRole("ADMIN")
+
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

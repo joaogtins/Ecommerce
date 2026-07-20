@@ -423,3 +423,22 @@
 | CORS preflight OPTIONS (localhost:3000) | ✅ 200 com headers CORS |
 | CORS preflight OPTIONS (meusite.com) | ✅ 403 (origem não permitida) |
 | GET /api/orders/me (autenticado) | ✅ Lista de pedidos do cliente |
+
+---
+
+## Correções pós-revisão
+
+### 1. StockController.getStock() — stub corrigido
+- **Antes:** retornava `Map.of("productId", productId.intValue())` (stub sem cálculo real).
+- **Agora:** consulta `ProductVariantRepository.findByProductId()` e retorna `Map<variantId, stockQuantity>` calculado via `StockService.calculateCurrentStock()`.
+- **Impacto:** o endpoint `GET /api/products/{id}/stock` agora funciona com dados reais.
+
+### 2. DevDataSeeder — senha BCrypt + admin
+- **Antes:** `password("senha123")` em texto puro → login quebrava.
+- **Agora:** `password(passwordEncoder.encode("senha123"))` com BCrypt + seed de admin (`admin@trie.com` / `admin123`) com role ADMIN.
+- **Impacto:** login funcional no perfil dev com ambos os usuários.
+
+### 3. SecurityConfig — catálogo público
+- **Antes:** `.anyRequest().authenticated()` fechava todas as rotas, incluindo vitrine.
+- **Agora:** `GET /api/products/**` e `/api/addresses/**` são `permitAll()`. POST/PUT/DELETE de produtos, stock movements e PATCH de status continuam restritos a ADMIN.
+- **Impacto:** qualquer visitante pode ver produtos, buscar, listar categorias e validar endereço sem autenticação.

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -19,6 +20,7 @@ public class DevDataSeeder implements CommandLineRunner {
 
     private final DeliveryZoneRepository deliveryZoneRepository;
     private final CustomerRepository customerRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
@@ -64,9 +66,17 @@ public class DevDataSeeder implements CommandLineRunner {
         customerRepository.save(Customer.builder()
             .name("Cliente Teste")
             .email("teste@email.com")
-            .password("senha123")
+            .password(passwordEncoder.encode("senha123"))
             .role(UserRole.CUSTOMER)
             .build());
-        log.info("Test customer seeded with id=1, email=teste@email.com");
+        log.info("Test customer seeded with email=teste@email.com / senha=senha123");
+
+        customerRepository.save(Customer.builder()
+            .name("Administrador")
+            .email("admin@trie.com")
+            .password(passwordEncoder.encode("admin123"))
+            .role(UserRole.ADMIN)
+            .build());
+        log.info("Admin seeded with email=admin@trie.com / senha=admin123");
     }
 }
