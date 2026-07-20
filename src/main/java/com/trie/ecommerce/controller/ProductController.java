@@ -24,12 +24,14 @@ public class ProductController {
 
     @GetMapping
     @Operation(summary = "Listar produtos ativos")
+    @ApiResponse(responseCode = "200", description = "Lista de produtos")
     public List<ProductResponse> findAll() {
         return productService.findAll();
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Buscar produto por ID")
+    @ApiResponse(responseCode = "200", description = "Produto encontrado")
     @ApiResponse(responseCode = "404", description = "Produto nao encontrado")
     public ProductResponse findById(@PathVariable Long id) {
         return productService.findById(id);

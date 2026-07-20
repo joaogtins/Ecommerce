@@ -389,3 +389,18 @@
 | POST /api/products como ADMIN | ✅ Produto criado |
 | GET /api/cart autenticado sem carrinho | ✅ `NOT_FOUND` (404) |
 | Registro duplicado | ✅ `BUSINESS_ERROR` |
+
+---
+
+## Fase 8 — Documentação da API
+
+### Passo 8.1 — Anotações OpenAPI
+- Revisados todos os 7 controllers: `@Tag`, `@Operation` e `@ApiResponse` adicionados/completados em todos os endpoints.
+- **Controllers cobertos:** AuthController, AddressController, CartController, CheckoutController, OrderController, ProductController, StockController.
+- Códigos de resposta documentados: 200, 201, 204, 400, 401, 403, 404, 409, 422.
+
+### Passo 8.2 — README.md
+- **`README.md`**: reescrito com stack, pré-requisitos, variáveis de ambiente, URLs da documentação, fluxo de uso completo (curl), tabela de endpoints por fase e estrutura do projeto.
+
+### Passo 8.3 — Exportação OpenAPI
+- **`openapi-spec.json`**: 27KB exportado de `http://localhost:8080/api-docs`.

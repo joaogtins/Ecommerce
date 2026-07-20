@@ -23,6 +23,8 @@ public class CartController {
 
     @GetMapping
     @Operation(summary = "Visualizar carrinho atual")
+    @ApiResponse(responseCode = "200", description = "Carrinho encontrado")
+    @ApiResponse(responseCode = "401", description = "Nao autenticado")
     @ApiResponse(responseCode = "404", description = "Carrinho nao encontrado")
     public OrderResponse getCart(@AuthenticationPrincipal CustomerUserDetails user) {
         return cartService.getCart(user.getId());
@@ -32,6 +34,8 @@ public class CartController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Adicionar item ao carrinho")
     @ApiResponse(responseCode = "201", description = "Item adicionado")
+    @ApiResponse(responseCode = "400", description = "Dados invalidos")
+    @ApiResponse(responseCode = "401", description = "Nao autenticado")
     @ApiResponse(responseCode = "409", description = "Estoque insuficiente")
     public OrderResponse addItem(@AuthenticationPrincipal CustomerUserDetails user,
                                   @Valid @RequestBody AddItemRequest request) {

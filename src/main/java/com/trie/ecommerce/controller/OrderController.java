@@ -25,6 +25,8 @@ public class OrderController {
 
     @GetMapping
     @Operation(summary = "Listar todos os pedidos")
+    @ApiResponse(responseCode = "200", description = "Lista de pedidos")
+    @ApiResponse(responseCode = "401", description = "Nao autenticado")
     public List<OrderResponse> findAll() {
         return orderService.findAll();
     }
