@@ -347,3 +347,45 @@
 | DELIVERED → PAID (inválido) | ✅ `INVALID_TRANSITION` |
 | PENDING → CANCELLED c/ motivo | ✅ Estoque liberado, history com notas |
 | Histórico completo (4 transições) | ✅ `PENDING→PAID→PREPARING→OUT_FOR_DELIVERY→DELIVERED` |
+
+---
+
+## Fase 7 — Autenticação JWT
+
+### Passo 7.1 — DTOs de autenticação
+- **`RegisterRequest`** (`dto/request/RegisterRequest.java`): name, email, password, phone com Bean Validation.
+- **`LoginRequest`** (`dto/request/LoginRequest.java`): email + password.
+- **`AuthResponse`** (`dto/response/AuthResponse.java`): token JWT + dados do usuário (id, name, email, role).
+
+### Passo 7.2 — UserDetails
+- **`CustomerUserDetails`** (`security/CustomerUserDetails.java`): adapta Customer ao UserDetails do Spring Security, com `ROLE_CUSTOMER` ou `ROLE_ADMIN` como GrantedAuthority.
+- **`UserDetailsServiceImpl`** (`security/UserDetailsServiceImpl.java`): carrega Customer pelo email.
+
+### Passo 7.3 — CustomerService
+- **`CustomerService.register()`**: valida email único, codifica senha com BCrypt, salva no banco.
+
+### Passo 7.4 — JWT
+- **`JwtTokenProvider`** (`security/JwtTokenProvider.java`): gera token com claims (userId, role), valida e extrai email. Usa HMAC-SHA512 com chave do `app.jwt.secret`.
+- **`JwtAuthenticationFilter`** (`security/JwtAuthenticationFilter.java`): extrai token do header `Authorization: Bearer ...`, valida e seta o SecurityContext.
+
+### Passo 7.5 — SecurityConfig + AuthController
+- **`SecurityConfig`** (`config/SecurityConfig.java`): substitui o `SecurityDevConfig`. Define endpoints públicos (`/api/auth/**`, Swagger, health), endpoints de admin (POST/PUT/DELETE products, stock, PATCH order status). Stateless sessions + JWT filter.
+- **`AuthController`** (`controller/AuthController.java`): `POST /api/auth/register` (201) e `POST /api/auth/login` (200).
+- **Handlers**: `AuthenticationEntryPoint` retorna 401 JSON, `AccessDeniedHandler` retorna 403 JSON. `BadCredentialsException` tratado no `GlobalExceptionHandler`.
+
+### Passo 7.6 — Admin seed + Controllers atualizados
+- **`V10__seed_admin.sql`**: insere admin com email `admin@trie.com` e senha `admin123`.
+- **CartController** e **CheckoutController**: migrados de `X-Customer-Id` header para `@AuthenticationPrincipal CustomerUserDetails`.
+
+### Testes realizados
+| Teste | Resultado |
+|---|---|
+| Registro de novo usuário | ✅ Token JWT retornado |
+| Login com credenciais válidas | ✅ Token + dados do usuário |
+| Login com senha errada | ✅ `UNAUTHORIZED` (401) |
+| GET /api/products sem token | ✅ 401 |
+| GET /api/products com token CUSTOMER | ✅ 17 produtos carregados |
+| POST /api/products como CUSTOMER | ✅ `FORBIDDEN` (403) |
+| POST /api/products como ADMIN | ✅ Produto criado |
+| GET /api/cart autenticado sem carrinho | ✅ `NOT_FOUND` (404) |
+| Registro duplicado | ✅ `BUSINESS_ERROR` |

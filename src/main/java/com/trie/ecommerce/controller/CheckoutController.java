@@ -1,11 +1,13 @@
 package com.trie.ecommerce.controller;
 
 import com.trie.ecommerce.dto.response.CheckoutResponse;
+import com.trie.ecommerce.security.CustomerUserDetails;
 import com.trie.ecommerce.service.CartService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,7 +24,7 @@ public class CheckoutController {
     @ApiResponse(responseCode = "404", description = "Carrinho nao encontrado")
     @ApiResponse(responseCode = "422", description = "Carrinho vazio")
     public CheckoutResponse checkout(@PathVariable Long id,
-                                      @RequestHeader("X-Customer-Id") Long customerId) {
-        return cartService.checkout(customerId);
+                                      @AuthenticationPrincipal CustomerUserDetails user) {
+        return cartService.checkout(user.getId());
     }
 }
