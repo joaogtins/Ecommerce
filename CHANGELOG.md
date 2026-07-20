@@ -404,3 +404,22 @@
 
 ### Passo 8.3 — Exportação OpenAPI
 - **`openapi-spec.json`**: 27KB exportado de `http://localhost:8080/api-docs`.
+
+---
+
+## Fase 9 — Frontend e CORS (backend)
+
+### Passo 9.1 — CorsConfig
+- **`CorsConfig`** (`config/CorsConfig.java`): implementa `WebMvcConfigurer` com CORS mapeado para `/api/**`, lendo origens de `app.cors.allowed-origins`.
+- **`SecurityConfig`**: adicionado `corsConfigurationSource()` bean com as mesmas configurações para que o Spring Security processe preflight OPTIONS corretamente (retornando 200 em vez de 401).
+
+### Passo 9.2 — Endpoint /api/orders/me
+- **`OrderService.findOrdersByCustomer(customerId)`**: filtra pedidos pelo ID do cliente autenticado.
+- **`OrderController`**: novo endpoint `GET /api/orders/me` usando `@AuthenticationPrincipal`.
+
+### Testes realizados
+| Teste | Resultado |
+|---|---|
+| CORS preflight OPTIONS (localhost:3000) | ✅ 200 com headers CORS |
+| CORS preflight OPTIONS (meusite.com) | ✅ 403 (origem não permitida) |
+| GET /api/orders/me (autenticado) | ✅ Lista de pedidos do cliente |

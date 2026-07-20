@@ -48,6 +48,14 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public List<OrderResponse> findOrdersByCustomer(Long customerId) {
+        return orderRepository.findAll().stream()
+            .filter(o -> o.getCustomer().getId().equals(customerId))
+            .map(OrderMapper::toResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<OrderStatusHistoryResponse> getHistory(Long id) {
         Order order = orderRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Pedido nao encontrado: " + id));

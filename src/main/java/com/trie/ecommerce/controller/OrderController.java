@@ -5,12 +5,14 @@ import com.trie.ecommerce.dto.response.OrderResponse;
 import com.trie.ecommerce.dto.response.OrderStatusHistoryResponse;
 import com.trie.ecommerce.enums.OrderStatus;
 import com.trie.ecommerce.exception.InvalidStatusTransitionException;
+import com.trie.ecommerce.security.CustomerUserDetails;
 import com.trie.ecommerce.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,6 +31,13 @@ public class OrderController {
     @ApiResponse(responseCode = "401", description = "Nao autenticado")
     public List<OrderResponse> findAll() {
         return orderService.findAll();
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Listar pedidos do cliente autenticado")
+    @ApiResponse(responseCode = "200", description = "Lista de pedidos do cliente")
+    public List<OrderResponse> findMyOrders(@AuthenticationPrincipal CustomerUserDetails user) {
+        return orderService.findOrdersByCustomer(user.getId());
     }
 
     @GetMapping("/{id}")
