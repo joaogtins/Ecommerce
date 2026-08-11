@@ -123,3 +123,16 @@ src/main/java/com/trie/ecommerce/
 ├── security/      # JWT + Filtros + UserDetails
 └── service/       # Lógica de negócio
 ```
+
+## Frontend (`front/`)
+
+Vitrine em React + TypeScript + Vite + Tailwind CSS, consumindo esta API. Veja
+[`front/README.md`](front/README.md) para instruções de setup e a lista de telas
+implementadas.
+
+```bash
+# com o backend rodando em :8080
+cd front
+npm install
+npm run dev
+```

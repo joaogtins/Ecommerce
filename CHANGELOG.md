@@ -442,3 +442,70 @@
 - **Antes:** `.anyRequest().authenticated()` fechava todas as rotas, incluindo vitrine.
 - **Agora:** `GET /api/products/**` e `/api/addresses/**` são `permitAll()`. POST/PUT/DELETE de produtos, stock movements e PATCH de status continuam restritos a ADMIN.
 - **Impacto:** qualquer visitante pode ver produtos, buscar, listar categorias e validar endereço sem autenticação.
+
+---
+
+## Fase 10 — Frontend (Vitrine) — telas prontas do Figma
+
+Implementação das 5 telas de vitrine já finalizadas no design (Figma "Triê Pratas — Bia
+Lopes"), conectadas aos endpoints reais da API descritos acima. Stack escolhida:
+**Vite + React + TypeScript + Tailwind CSS v4**, por ser leve, sem a complexidade de
+SSR do Next.js (que não é necessária para uma vitrine cliente-side consumindo uma API
+já pronta), e por ter build/HMR rápidos.
+
+### Passo 10.1 — Setup do projeto (`front/`)
+- **`front/`** criado com `npm create vite@latest -- --template react-ts`.
+- **Tailwind CSS v4** instalado via `@tailwindcss/vite` (plugin do Vite, substitui o antigo
+  `tailwind.config.js` + PostCSS — abordagem nova do Tailwind 4).
+- **`react-router-dom`** para roteamento client-side.
+- **`vite.config.ts`**: proxy de `/api/*` para `http://localhost:8080` em dev, evitando
+  configurar CORS na máquina do desenvolvedor.
+- **`src/index.css`**: paleta de cores (`--color-trie-*`) e tipografia (Cormorant Garamond
+  para display, Manrope para corpo) extraídas visualmente do design no Figma.
+
+### Passo 10.2 — Camada de API (`src/api/`)
+- **`client.ts`**: wrapper sobre `fetch` que injeta o header `Authorization: Bearer` quando
+  há token salvo, e lança `ApiError` (com `status`) em respostas não-2xx — usado para tratar
+  casos como 404 (carrinho vazio) e 409 (estoque insuficiente) de forma específica na UI.
+- **`products.ts`, `cart.ts`, `orders.ts`, `auth.ts`**: uma função por endpoint, tipada com os
+  DTOs espelhados em `src/types/` (que replicam exatamente os records Java do backend:
+  `ProductResponse`, `OrderResponse`, `VariantResponse`, etc.).
+- **Por que espelhar os DTOs manualmente:** o projeto não gera cliente TS a partir do
+  `openapi-spec.json` para manter o setup simples; se o schema mudar no backend, os tipos em
+  `src/types/` precisam ser atualizados manualmente.
+
+### Passo 10.3 — Autenticação e carrinho (`src/context/`)
+- **`AuthContext`**: guarda o usuário logado e o token (localStorage), expõe `login`,
+  `register`, `logout`. Persiste a sessão entre reloads.
+- **`CartContext`**: busca o carrinho do cliente autenticado ao montar, expõe `addItem`,
+  `removeItem`, `clear`, `itemCount` (usado no badge do header). Trata 404 do
+  `GET /api/cart` como "carrinho vazio" em vez de erro, já que esse é o comportamento da API
+  para clientes sem carrinho ainda.
+- **`ProtectedRoute`**: redireciona para `/entrar` guardando a rota de origem, usado nas
+  rotas `/carrinho` e `/pedidos`.
+
+### Passo 10.4 — Telas implementadas (`src/pages/`)
+| Tela | Arquivo | Rota |
+|---|---|---|
+| Home / Destaques | `Home.tsx` | `/` |
+| Catálogo (filtro por categoria/busca) | `ProductList.tsx` | `/produtos` |
+| Detalhe do produto (variantes, estoque) | `ProductDetail.tsx` | `/produtos/:id` |
+| Login / Cadastro | `Login.tsx` | `/entrar` |
+| Carrinho + checkout WhatsApp | `Cart.tsx` | `/carrinho` |
+| Meus pedidos | `Orders.tsx` | `/pedidos` |
+
+- O checkout do carrinho chama `POST /api/orders/{id}/checkout`, abre o `whatsappLink`
+  retornado numa nova aba e redireciona o cliente para `/pedidos`.
+- A tela de produto trata estoque zerado (`stockQuantity <= 0`) desabilitando o botão de
+  compra, e trata 409 (estoque insuficiente na hora de adicionar) com mensagem específica.
+
+### Não implementado nesta fase
+- **Validação de endereço / entrega**: o endpoint `POST /api/addresses/validate` existe no
+  backend, mas essa tela não apareceu no Figma revisado — falta o design antes de implementar.
+- **Telas de admin** (gestão de produtos, estoque, pedidos): endpoints prontos
+  (`POST/PUT/DELETE /api/products`, `/stock/movements`, `PATCH /api/orders/*/status`), mas
+  sem design ainda.
+
+### Validação
+- `npx tsc --noEmit`: sem erros de tipo.
+- `npm run build`: build de produção gerado com sucesso (`dist/`).
